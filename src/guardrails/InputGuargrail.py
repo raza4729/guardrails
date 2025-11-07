@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from langdetect import detect_langs, detect
+import re
 
 class InputGuardrail:
     def __init__(self, cfg):
@@ -13,14 +14,18 @@ class InputGuardrail:
     @staticmethod
     def _language_check(text: str, language: str) -> bool:
         return detect(text).lower() == language.lower()
+    
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        return re.sub(r"^[\'\"\(\[\s]+|[\'\"\)\]\s]+$", "", text)
 
     def build_prompt(self, input_data: Dict[str, Any]) -> str:
         """Combine instruction and text into a single prompt."""
         instruction = "Summarize the following abstract in maximum 3 sentences along side its factuality (such as citations, etc.)."
         
         abstract = input_data.get("abstract", "")
-        abstract = abstract.lstrip("'([")
-        abstract = abstract.rstrip("')")
+        abstract = self._normalize_text(abstract)
+
         if not self._language_check(abstract, self.cfg["language"]):
             raise ValueError("Abstract language not supported")
         # Merge instruction and text
