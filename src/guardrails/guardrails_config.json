@@ -1,9 +1,14 @@
 {
   "constraints": {
-    "min_sentences": 2,
-    "max_sentences": 5,
+    "min_sentences": 1,
+    "max_sentences": 3,
     "require_citations": true,
-    "citation_pattern": "\\[\\d+\\]|\\(Source:",
-    "max_tokens": 120
+    "language": "en",
+    "citation_patterns": [
+      "\\[\\d+\\]",
+      "\\([A-Z][a-z]+ et al\\., \\d{4}\\)",
+      "https?://\\S+",
+      "\\(Source:.*?\\)"
+    ]
   }
 }

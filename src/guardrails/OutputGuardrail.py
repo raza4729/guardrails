@@ -1,5 +1,6 @@
 from nltk.tokenize import sent_tokenize
 from langdetect import detect_langs, detect
+import re 
 
 class OutputGuardrail:
     def __init__(self, cfg):
@@ -16,8 +17,12 @@ class OutputGuardrail:
         return True  
     
     @staticmethod
-    def _validate_citation_format(citation: str) -> bool:
-        # Placeholder for citation format validation logic
+    def _citation_check(text: str, pattern: str) -> bool:
+        matches = []
+        for pat in pattern:
+            matches.extend(re.findall(pat, text))
+        if not matches: 
+            return False
         return True
     
     @staticmethod
@@ -30,9 +35,9 @@ class OutputGuardrail:
         return detect(text).lower() == language.lower()
 
     @staticmethod
-    def _validate_sent_length(text: str, min_sentences: int) -> bool:
+    def _validate_sent_length(text: str, min_sentences: int, max_sentences: int) -> bool:
         sentences = sent_tokenize(text)
-        return len(sentences) >= min_sentences
+        return len(sentences) >= min_sentences and len(sentences) <= max_sentences
 
     def check_completeness(self, output: str) -> bool:
         violations = []
@@ -42,10 +47,16 @@ class OutputGuardrail:
             violations.append(f"Language mismatch: expected {self.cfg['language']}")
 
         # 2. Check length constraints 
-        if not self._validate_sent_length(output, self.cfg["min_sentences"]):
-            violations.append(f"Too few sentences: found {len(sent_tokenize(output))}, "
-                            f"expected at least {self.cfg['min_sentences']}")
+        if not self._validate_sent_length(output, self.cfg["min_sentences"],  self.cfg["max_sentences"]):
+            violations.append(f"Too many or few sentences: found {len(sent_tokenize(output))}, "
+                            f"expected at least {self.cfg['min_sentences']}",
+                            f" and at most {self.cfg['max_sentences']} sentences.")
         
+        # 3. Check citation presence
+        if self.cfg["require_citations"]:
+            if not self._citation_check(output, self.cfg["citation_patterns"]):
+                violations.append("Missing required citations in the output.")
+
         if not violations:
             return {"violations": None, "oiriginal_output": output}
         else:
