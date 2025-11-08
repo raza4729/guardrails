@@ -1,13 +1,16 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Callable
 from llama_cpp import Llama
-import logging, warnings
+import logging, warnings, os
+from huggingface_hub import hf_hub_download
 
 class Model(ABC):
     def __init__(self, model_id: str, cache: Any = None):
         self._model_id = model_id
         self.cache = cache or {}
         self._model = None
+        self._models_cache_dir = "./_models_cache" 
+        os.makedirs(self._models_cache_dir, exist_ok=True)
 
     @abstractmethod
     def load_model(self) -> None: ...
@@ -21,15 +24,23 @@ class Mistral(Model):
             model_id: str = "TheBloke/Mistral-7B-Instruct-v0.2-GGUF", 
             model_path: str = "mistral-7b-instruct-v0.2.Q2_K.gguf"):
         super().__init__(model_id=model_id)
-        self._model_path = model_path
+        
+        self._model_path = hf_hub_download(
+            repo_id=model_id,
+            filename=model_path,
+            local_dir=self._models_cache_dir,
+            local_files_only=True   
+        )
+        self._model = None
 
     def load_model(self) -> None:
         if self._model is None:
-            self._model = Llama.from_pretrained(
-                	repo_id= self._model_id,
-	                filename=self._model_path,
-                    verbose=False, # to suppress loading info
-                )
+            self._model = Llama(
+                model_path=self._model_path,   # local file if available
+                n_ctx=512,
+                n_gpu_layers=0,                # CPU-only, adjust if you have GPU
+                verbose=False
+            )
 
     def inference(self, prompt: str) -> str:
         if prompt in self.cache:
@@ -38,10 +49,10 @@ class Mistral(Model):
         self.load_model()
 
         params = {
-            "max_tokens": 120,
+            "max_tokens": 150,
             "temperature": 0.2,
             "top_p": 0.95,
-            "stop": ["</s>"],  # safer than "\n"
+            "stop": ["</s>", "[/INST]"],  # safer than "\n"
             "echo": False, # include prompt in output: False
         }
 
