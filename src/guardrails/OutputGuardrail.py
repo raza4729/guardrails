@@ -1,11 +1,11 @@
 from nltk.tokenize import sent_tokenize
 from langdetect import detect, LangDetectException
-import re 
+import re, logging 
 
 class OutputGuardrail:
     def __init__(self, cfg, logger):
         self.cfg = cfg
-        self.logger = logger.getChild("output")
+        self.logger = (logger or logging.getLogger("guardrails")).getChild("output")
     
     @staticmethod
     def _detect_citation_pattern(text: str, pattern: str) -> bool:
@@ -58,13 +58,14 @@ class OutputGuardrail:
             if not self._detect_citation_pattern(output, self.cfg["citation_patterns"]):
                 violations.append("Missing required citations in the output.")
                 self.logger.error("Missing citations!")
+
         # 4. Check relevance
         if not self._check_relevance(input, output):
             violations.append("Output is not relevant to the input prompt.")
             self.logger.error("Relevance check failed!")   
 
         if not violations:
-            return {"violations": None, "oiriginal_output": output}
+            return {"violations": None, "original_output": output}
         else:
-            return {"violations": violations, "oiriginal_output": output}
+            return {"violations": violations, "original_output": output}
     
