@@ -28,16 +28,16 @@ class OutputGuardrail:
         return ratio > 0.60
     
     @staticmethod
+    def _validate_sent_length(text: str, min_sentences: int, max_sentences: int) -> bool:
+        sentences = sent_tokenize(text)
+        return (len(sentences) >= min_sentences and len(sentences) <= max_sentences)
+
+    @staticmethod
     def _language_check(text: str, language: str) -> bool:
         try:
             return detect(text).lower().startswith(language.lower())
         except LangDetectException:
             return False
-
-    @staticmethod
-    def _validate_sent_length(text: str, min_sentences: int, max_sentences: int) -> bool:
-        sentences = sent_tokenize(text)
-        return len(sentences) >= min_sentences and len(sentences) <= max_sentences
 
     def check_completeness(self, input: str, output: str) -> bool:
         violations = []
@@ -45,27 +45,27 @@ class OutputGuardrail:
         # 1. Check language constraints
         if not self._language_check(output, self.cfg["language"]):
             violations.append(f"Language mismatch: expected {self.cfg['language']}")
-            self.logger.error("Language mismatch!")
+            #self.logger.error(f"Language mismatch: expected {self.cfg['language']}")
 
         # 2. Check length constraints 
         if not self._validate_sent_length(output, self.cfg["min_sentences"],  self.cfg["max_sentences"]):
             n = len(sent_tokenize(output, language="english"))
-            violations.append(f"Sentence count {n} outside [{self.cfg["min_sentences"]}, {self.cfg["max_sentences"]}]")
-            self.logger.error("Sentence count violation!")
+            violations.append(f"Sentence count {n} outside the range of [{self.cfg['min_sentences']}, {self.cfg['max_sentences']}]")
+            #self.logger.error(f"Sentence count {n} outside the range of [{self.cfg['min_sentences']}, {self.cfg['max_sentences']}]")
 
         # 3. Check citation presence
         if self.cfg["require_citations"]:
             if not self._detect_citation_pattern(output, self.cfg["citation_patterns"]):
                 violations.append("Missing required citations in the output.")
-                self.logger.error("Missing citations!")
+                #self.logger.error("Missing required citations in the output.")
 
         # 4. Check relevance
         if not self._check_relevance(input, output):
             violations.append("Output is not relevant to the input prompt.")
-            self.logger.error("Relevance check failed!")   
+            #self.logger.error("Output is not relevant to the input prompt.")   
 
         if not violations:
-            return {"violations": None, "original_output": output}
+            return {"output_violations": None, "original_output": output}
         else:
-            return {"violations": violations, "original_output": output}
+            return {"output_violations": violations, "original_output": output}
     
