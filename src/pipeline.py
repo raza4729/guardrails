@@ -3,7 +3,7 @@ pipeline.py — Orchestrates the guardrails and model inference flow.
 """
 
 from src.models import Mistral
-from .guardrails.InputGuargrail import  InputGuardrail
+from .guardrails.InputGuardrail import  InputGuardrail, GuardrailViolation
 from .guardrails.OutputGuardrail import OutputGuardrail
 
 from typing import Dict, Any
@@ -33,8 +33,17 @@ class GuardrailPipeline:
             self.cfg = json.load(f)["constraints"]
         
         # Input Guardrails
-        inGuardrail_instance = InputGuardrail(cfg=self.cfg, logger=logger)
-        prompt = inGuardrail_instance.build_prompt(input_data=input)
+        inGuardrail_instance = InputGuardrail(cfg=self.cfg, logger=logger, model=self.model)
+        try: 
+            prompt = inGuardrail_instance.build_prompt(input_data=input)
+        except GuardrailViolation as e:
+            logger.warning("Input blocked: %s", e)
+            return {
+                "id": input.get("id", None),
+                "task": input.get("abstract", None),
+                "Skipped": True,
+                "violations": [str(e)],
+            }    
         
         # Model Inference
         try:
@@ -48,9 +57,9 @@ class GuardrailPipeline:
 
         return {
             "id": input.get("id", None),
-            "task": input.get("absract", None),
+            "task": input.get("abstract", None),
             "input_prompt": prompt,
-            "original_output": results.get("oiriginal_output", None),
+            "original_output": results.get("original_output", None),
             "violations": results.get("violations", None),
         }
 
