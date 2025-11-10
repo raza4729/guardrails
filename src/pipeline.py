@@ -41,7 +41,7 @@ class GuardrailPipeline:
             logger.warning("Input blocked: %s", e)
             return {
                 "id": input.get("id", None),
-                "task": input.get("abstract", "")[:100],
+                "task": input.get("abstract", ""),
                 "Skipped": True,
                 "violations": [str(e)],
             }    
